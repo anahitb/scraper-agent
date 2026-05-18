@@ -1,9 +1,12 @@
+import os
+import json
 import logging
-import anthropic
 
 logger = logging.getLogger(__name__)
 
-client = anthropic.Anthropic()
+# Set LLM_BACKEND=anthropic to use Claude (paid).
+# Default is groq (free — sign up at console.groq.com, no credit card needed).
+LLM_BACKEND = os.getenv("LLM_BACKEND", "groq")
 
 SYSTEM_PROMPT = """You are an expert analyst specializing in bulk internet and telecommunications service agreements between internet service providers (ISPs) and property owners/managers (MDU — multi-dwelling units, apartment complexes, HOAs, condo associations, commercial buildings, etc.).
 
@@ -16,7 +19,7 @@ A genuine bulk agreement will have ALL of the following characteristics:
 - A property entity (HOA, Homeowners Association, Condo Association, Apartment complex, property manager) listed as Owner or Customer
 - A specific number of units covered under the deal
 - A per-unit monthly Bulk Service Fee
-- A Service Commitment Period or term length (typically 5–10 years)
+- A Service Commitment Period or term length (typically 5-10 years)
 - Bulk services covering internet and/or cable TV provided as an amenity
 
 Common document titles you will see:
@@ -28,7 +31,7 @@ Common document titles you will see:
 Key clauses to look for: Door Fee (one-time payment), marketing exclusivity, auto-renewal terms, termination payment, Advanced Community WiFi, capital investment by operator.
 """
 
-EXTRACTION_PROMPT = """Below is extracted text from a document. Analyze it and respond ONLY with valid JSON in the exact format below — no explanation, no markdown, just the JSON object.
+EXTRACTION_PROMPT = """Below is extracted text from a document. Analyze it and respond ONLY with valid JSON in the exact format below - no explanation, no markdown, just the JSON object.
 
 {{
   "is_bulk_agreement": true or false,
@@ -59,39 +62,61 @@ Document text (first {char_count} characters):
 ---"""
 
 
+def _call_groq(prompt: str) -> str:
+    from groq import Groq
+    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=1024,
+        temperature=0,
+    )
+    return response.choices[0].message.content.strip()
+
+
+def _call_anthropic(prompt: str) -> str:
+    import anthropic
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text.strip()
+
+
+def _parse_json(raw: str) -> dict:
+    start = raw.find("{")
+    end = raw.rfind("}") + 1
+    if start != -1 and end > start:
+        return json.loads(raw[start:end])
+    return {"raw_response": raw}
+
+
 def analyze(result: dict) -> dict:
-    """Run Claude analysis on a successfully downloaded PDF."""
+    """Run LLM analysis on a successfully downloaded PDF."""
     text = result.get("full_text", "")
     if not text:
         result["analysis"] = {"error": "no text to analyze"}
         return result
 
-    # Trim to stay within token limits (~8k chars ≈ ~2k tokens, safe margin)
     text_sample = text[:8000]
-
     prompt = EXTRACTION_PROMPT.format(text=text_sample, char_count=len(text_sample))
 
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = message.content[0].text.strip()
-
-        # Parse JSON from response
-        import json
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        if start != -1 and end > start:
-            analysis = json.loads(raw[start:end])
+        if LLM_BACKEND == "anthropic":
+            raw = _call_anthropic(prompt)
         else:
-            analysis = {"raw_response": raw}
+            raw = _call_groq(prompt)
 
+        analysis = _parse_json(raw)
         result["analysis"] = analysis
         logger.info(
-            f"Analysis complete for {result['url']}: "
+            f"Analysis complete ({LLM_BACKEND}) for {result['url']}: "
             f"is_bulk={analysis.get('is_bulk_agreement')}, "
             f"confidence={analysis.get('confidence')}"
         )

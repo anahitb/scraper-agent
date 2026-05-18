@@ -1,0 +1,60 @@
+name: Bulk Agreement Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      providers:
+        description: 'Comma-separated provider names (e.g. Spectrum,Xfinity,WOW)'
+        required: false
+        default: 'Spectrum,Xfinity,Cox,Comcast,AT&T'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          mkdir -p output
+          # Convert comma-separated input to space-separated args
+          PROVIDERS="${{ github.event.inputs.providers }}"
+          ARGS=$(echo "$PROVIDERS" | tr ',' '\n' | sed 's/^/"/;s/$/"/' | tr '\n' ' ')
+          eval python main.py $ARGS
+
+      - name: Upload Excel report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bulk-agreements-excel
+          path: output/bulk_agreements.xlsx
+          if-no-files-found: warn
+
+      - name: Upload PDFs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bulk-agreements-pdfs
+          path: output/*.pdf
+          if-no-files-found: warn
+
+      - name: Upload full output folder
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-output
+          path: output/
+          if-no-files-found: warn

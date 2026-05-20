@@ -108,7 +108,7 @@ SEARCH_QUERY_TEMPLATES = [
     '{provider} MDU bulk service agreement pdf',
 ]
 
-MAX_RESULTS_PER_QUERY = 20
+MAX_RESULTS_PER_QUERY = 50
 PDF_DOWNLOAD_TIMEOUT = 30  # seconds
 MAX_PDF_PAGES_TO_SCAN = 20  # scan more pages — some agreements bury pricing deeper
 

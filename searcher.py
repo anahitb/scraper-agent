@@ -7,10 +7,31 @@ from config import SEARCH_QUERY_TEMPLATES, MAX_RESULTS_PER_QUERY
 logger = logging.getLogger(__name__)
 
 # SEARCH_BACKEND options:
-#   "brave"  — Brave Search API (recommended): set BRAVE_API_KEY env var
+#   "serper" — Serper.dev (recommended): set SERPER_API_KEY env var
+#   "brave"  — Brave Search API: set BRAVE_API_KEY env var
 #   "google" — Google Custom Search API: set GOOGLE_API_KEY + GOOGLE_CSE_ID env vars
 #   "ddgs"   — DuckDuckGo (free, no key needed, but weaker results)
 SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "ddgs")
+
+
+def _search_serper(query: str, max_results: int) -> list[dict]:
+    api_key = os.environ["SERPER_API_KEY"]
+    resp = requests.post(
+        "https://google.serper.dev/search",
+        headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+        json={"q": query, "num": min(max_results, 100)},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    items = resp.json().get("organic", [])
+    return [
+        {
+            "url": item.get("link", ""),
+            "title": item.get("title", ""),
+            "snippet": item.get("snippet", ""),
+        }
+        for item in items
+    ][:max_results]
 
 
 def _search_brave(query: str, max_results: int) -> list[dict]:
@@ -84,6 +105,8 @@ def _search_google(query: str, max_results: int) -> list[dict]:
 
 
 def _run_query(query: str) -> list[dict]:
+    if SEARCH_BACKEND == "serper":
+        return _search_serper(query, MAX_RESULTS_PER_QUERY)
     if SEARCH_BACKEND == "brave":
         return _search_brave(query, MAX_RESULTS_PER_QUERY)
     if SEARCH_BACKEND == "google":

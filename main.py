@@ -11,16 +11,14 @@ Usage:
 """
 
 import argparse
-import json
+import csv
 import logging
 import os
 import sys
 import time
 from tqdm import tqdm
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment
 
-from config import PROVIDERS, OUTPUT_DIR, REPORT_FILE
+from config import PROVIDERS, OUTPUT_DIR
 from searcher import search_provider
 from url_filter import filter_results
 from pdf_handler import process_url
@@ -36,74 +34,32 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-EXCEL_FILE = "output/bulk_agreements.xlsx"
+CSV_FILE = "output/bulk_agreements.csv"
 
-COLUMNS = [
-    ("Provider (ISP)",           lambda a, kt, r: a.get("provider") or r.get("provider")),
-    ("Property Name",            lambda a, kt, r: a.get("property_name")),
-    ("Property Address",         lambda a, kt, r: a.get("property_address")),
-    ("Number of Units",          lambda a, kt, r: kt.get("number_of_units")),
-    ("Service Commitment Period",lambda a, kt, r: kt.get("service_commitment_period")),
-    ("Auto Renewal",             lambda a, kt, r: kt.get("auto_renewal")),
-    ("Monthly Fee / Unit",       lambda a, kt, r: kt.get("monthly_fee_per_unit")),
-    ("Total Monthly Billing",    lambda a, kt, r: kt.get("total_monthly_billing")),
-    ("Door Fee / Unit",          lambda a, kt, r: kt.get("door_fee_per_unit")),
-    ("Internet Speed",           lambda a, kt, r: kt.get("internet_speed")),
-    ("Services Covered",         lambda a, kt, r: ", ".join(kt.get("services_covered") or [])),
-    ("Marketing Exclusivity",    lambda a, kt, r: kt.get("marketing_exclusivity")),
-    ("Annual Rate Increase Cap", lambda a, kt, r: kt.get("annual_rate_increase_cap")),
-    ("Capital Investment",       lambda a, kt, r: kt.get("capital_investment_by_operator")),
-    ("Notable Clauses",          lambda a, kt, r: "; ".join(kt.get("notable_clauses") or [])),
-    ("Confidence",               lambda a, kt, r: a.get("confidence")),
-    ("Source URL",               lambda a, kt, r: r.get("url")),
-    ("Local PDF",                lambda a, kt, r: r.get("local_path")),
+CSV_COLUMNS = [
+    ("Provider",                lambda a, kt, r: a.get("provider") or r.get("provider")),
+    ("Property Name",           lambda a, kt, r: a.get("property_name")),
+    ("Address",                 lambda a, kt, r: a.get("property_address")),
+    ("Units",                   lambda a, kt, r: kt.get("number_of_units")),
+    ("Contract Effective Date", lambda a, kt, r: kt.get("contract_effective_date")),
+    ("Term Length",             lambda a, kt, r: kt.get("service_commitment_period")),
+    ("Services",                lambda a, kt, r: ", ".join(kt.get("services_covered") or [])),
+    ("Bulk Rate",               lambda a, kt, r: kt.get("monthly_fee_per_unit")),
+    ("Source URL",              lambda a, kt, r: r.get("url")),
+    ("Door Fee",                lambda a, kt, r: kt.get("door_fee_per_unit")),
 ]
 
 
-def save_excel(results: list[dict]) -> None:
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Bulk Agreements"
-
-    header_fill = PatternFill("solid", fgColor="1F4E79")
-    header_font = Font(bold=True, color="FFFFFF", size=11)
-    alt_fill = PatternFill("solid", fgColor="D6E4F0")
-
-    # Header row
-    for col_idx, (header, _) in enumerate(COLUMNS, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", wrap_text=True)
-
-    ws.row_dimensions[1].height = 30
-
-    # Data rows
-    for row_idx, r in enumerate(results, start=2):
-        a = r.get("analysis", {})
-        kt = a.get("key_takeaways", {})
-        fill = alt_fill if row_idx % 2 == 0 else PatternFill()
-        for col_idx, (_, extractor) in enumerate(COLUMNS, start=1):
-            try:
-                value = extractor(a, kt, r)
-            except Exception:
-                value = ""
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
-            cell.fill = fill
-            cell.alignment = Alignment(wrap_text=True, vertical="top")
-
-    # Auto-width columns
-    for col_idx in range(1, len(COLUMNS) + 1):
-        col_letter = openpyxl.utils.get_column_letter(col_idx)
-        max_len = max(
-            (len(str(ws.cell(row=r, column=col_idx).value or "")) for r in range(1, ws.max_row + 1)),
-            default=10,
-        )
-        ws.column_dimensions[col_letter].width = min(max_len + 4, 50)
-
-    ws.freeze_panes = "A2"
-    wb.save(EXCEL_FILE)
-    logger.info(f"Excel report saved to {EXCEL_FILE}")
+def save_csv(results: list[dict]) -> None:
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([col for col, _ in CSV_COLUMNS])
+        for r in results:
+            a = r.get("analysis", {})
+            kt = a.get("key_takeaways", {})
+            writer.writerow([extractor(a, kt, r) for _, extractor in CSV_COLUMNS])
+    logger.info(f"CSV saved to {CSV_FILE}")
 
 
 def run(providers: list[str]) -> list[dict]:
@@ -144,32 +100,27 @@ def run(providers: list[str]) -> list[dict]:
 
 
 def save_report(results: list[dict]) -> None:
-    report = []
-    for r in results:
-        entry = {k: v for k, v in r.items() if k not in ("full_text", "pdf_bytes")}
-        report.append(entry)
+    report = [{k: v for k, v in r.items() if k not in ("full_text", "pdf_bytes")} for r in results]
 
-    with open(REPORT_FILE, "w") as f:
-        json.dump(report, f, indent=2)
-    logger.info(f"JSON report saved to {REPORT_FILE}")
-
-    save_excel(report)
+    save_csv(report)
 
     print("\n" + "=" * 60)
     print(f"RESULTS: {len(report)} confirmed bulk agreements found")
-    print(f"Excel:   {EXCEL_FILE}")
-    print(f"JSON:    {REPORT_FILE}")
+    print(f"CSV:     {CSV_FILE}")
     print("=" * 60)
     for r in report:
         a = r.get("analysis", {})
         kt = a.get("key_takeaways", {})
-        print(f"\nProvider : {a.get('provider', r.get('provider'))}")
-        print(f"Property : {a.get('property_name', 'unknown')}")
-        print(f"Units    : {kt.get('number_of_units', 'unknown')}")
-        print(f"URL      : {r['url']}")
-        print(f"Fee/Unit : {kt.get('monthly_fee_per_unit', 'unknown')}")
-        print(f"Term     : {kt.get('service_commitment_period', 'unknown')}")
-        print(f"Exclusivity: {kt.get('marketing_exclusivity', 'unknown')}")
+        print(f"\nProvider     : {a.get('provider', r.get('provider'))}")
+        print(f"Property     : {a.get('property_name', 'unknown')}")
+        print(f"Address      : {a.get('property_address', 'unknown')}")
+        print(f"Units        : {kt.get('number_of_units', 'unknown')}")
+        print(f"Effective    : {kt.get('contract_effective_date', 'unknown')}")
+        print(f"Term         : {kt.get('service_commitment_period', 'unknown')}")
+        print(f"Services     : {', '.join(kt.get('services_covered') or [])}")
+        print(f"Bulk Rate    : {kt.get('monthly_fee_per_unit', 'unknown')}")
+        print(f"URL          : {r['url']}")
+        print(f"Door Fee     : {kt.get('door_fee_per_unit', 'unknown')}")
         print("-" * 40)
 
 

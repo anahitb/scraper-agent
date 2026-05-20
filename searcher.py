@@ -6,9 +6,41 @@ from config import SEARCH_QUERY_TEMPLATES, MAX_RESULTS_PER_QUERY
 
 logger = logging.getLogger(__name__)
 
-# Set SEARCH_BACKEND=google in env to use Google Custom Search API
-# Requires GOOGLE_API_KEY and GOOGLE_CSE_ID env vars
+# SEARCH_BACKEND options:
+#   "brave"  — Brave Search API (recommended): set BRAVE_API_KEY env var
+#   "google" — Google Custom Search API: set GOOGLE_API_KEY + GOOGLE_CSE_ID env vars
+#   "ddgs"   — DuckDuckGo (free, no key needed, but weaker results)
 SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "ddgs")
+
+
+def _search_brave(query: str, max_results: int) -> list[dict]:
+    api_key = os.environ["BRAVE_API_KEY"]
+    results = []
+    offset = 0
+    while len(results) < max_results:
+        count = min(20, max_results - len(results))
+        resp = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "gzip",
+                "X-Subscription-Token": api_key,
+            },
+            params={"q": query, "count": count, "offset": offset},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("web", {}).get("results", [])
+        if not items:
+            break
+        for item in items:
+            results.append({
+                "url": item.get("url", ""),
+                "title": item.get("title", ""),
+                "snippet": item.get("description", ""),
+            })
+        offset += len(items)
+    return results[:max_results]
 
 
 def _search_ddgs(query: str, max_results: int) -> list[dict]:
@@ -52,6 +84,8 @@ def _search_google(query: str, max_results: int) -> list[dict]:
 
 
 def _run_query(query: str) -> list[dict]:
+    if SEARCH_BACKEND == "brave":
+        return _search_brave(query, MAX_RESULTS_PER_QUERY)
     if SEARCH_BACKEND == "google":
         return _search_google(query, MAX_RESULTS_PER_QUERY)
     return _search_ddgs(query, MAX_RESULTS_PER_QUERY)

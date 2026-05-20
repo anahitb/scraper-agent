@@ -1,13 +1,19 @@
 PROVIDERS = [
-    "Broadstar",
-    "Buzz Broadband",
-    "Byte Broadband",
-    "DECCA Digital Solutions",
-    "SecureVision",
-    "Single Digits",
-    "Upstream",
     "Comcast",
     "Spectrum",
+    "Blue Stream",
+    "AT&T",
+    "Gigafy",
+    "GigaPointe",
+    "Gigstreem",
+    "GRUCom (Gator Net)",
+    "Hawaii Dialogix Telecom, LLC",
+    "IBT Connect",
+    "Juvilex Communications",
+    "Newark Fiber",
+    "ResTech Services",
+    "Uprise Fiber",
+    "Zentro",
 ]
 
 # Keywords that indicate a bulk internet agreement URL or document

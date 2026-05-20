@@ -45,12 +45,10 @@ URL_KEYWORDS = [
 ]
 
 # Keywords searched inside PDF text to verify document type.
-# Derived from reviewing real agreements: WOW!, Spectrum, Xfinity/Comcast, Fibernow.
 CONTENT_KEYWORDS = [
     # Document title phrases (very strong signals)
     "bulk cable television services agreement",
     "communications network and service agreement",
-    "xfinity communities service agreement",
     "bulk service agreement",
     "bulk internet service",
     "bulk video service",
@@ -71,7 +69,6 @@ CONTENT_KEYWORDS = [
     "property owner",
     "property manager",
     # Service / tech terms
-    "advanced community wifi",
     "bulk internet",
     "bulk video",
     "operator",
@@ -84,15 +81,14 @@ CONTENT_KEYWORDS = [
 ]
 
 # Minimum number of content keywords that must appear to consider a doc valid
-MIN_CONTENT_KEYWORD_MATCHES = 4
+MIN_CONTENT_KEYWORD_MATCHES = 2
 
 # Search queries constructed per provider.
-# Mix of tight (quoted) and broad queries to maximise recall.
+# filetype:pdf is Google-only — DuckDuckGo ignores it but queries still work.
 SEARCH_QUERY_TEMPLATES = [
     # Tight — document title phrases
     '"{provider}" "bulk service agreement" filetype:pdf',
     '"{provider}" "communications network and service agreement" bulk filetype:pdf',
-    '"{provider}" "xfinity communities service agreement" filetype:pdf',
     '"{provider}" "bulk cable television services agreement" filetype:pdf',
     # Broad — property type combos
     '"{provider}" bulk internet agreement HOA filetype:pdf',
@@ -104,9 +100,12 @@ SEARCH_QUERY_TEMPLATES = [
     '"{provider}" bulk agreement "number of units" filetype:pdf',
     '"{provider}" "service commitment period" bulk internet pdf',
     '"{provider}" "door fee" bulk internet agreement pdf',
-    # Without filetype constraint to catch HTML-hosted or non-standard URLs
+    # Without filetype constraint — catches HTML-hosted or non-standard URLs
     '"{provider}" "bulk service fee" "per unit" internet agreement',
     '"{provider}" communities bulk internet agreement signed',
+    # Simple unquoted — catches docs where provider name isn't in exact title
+    '{provider} bulk internet agreement pdf',
+    '{provider} MDU bulk service agreement pdf',
 ]
 
 MAX_RESULTS_PER_QUERY = 20
@@ -114,4 +113,3 @@ PDF_DOWNLOAD_TIMEOUT = 30  # seconds
 MAX_PDF_PAGES_TO_SCAN = 20  # scan more pages — some agreements bury pricing deeper
 
 OUTPUT_DIR = "output"
-REPORT_FILE = "output/report.json"

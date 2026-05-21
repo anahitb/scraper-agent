@@ -2,7 +2,7 @@ import os
 import time
 import logging
 import requests
-from config import SEARCH_QUERY_TEMPLATES, MAX_RESULTS_PER_QUERY
+from config import SEARCH_QUERY_TEMPLATES, MAX_RESULTS_PER_QUERY, SEARCH_PAGES
 
 logger = logging.getLogger(__name__)
 
@@ -16,22 +16,26 @@ SEARCH_BACKEND = os.getenv("SEARCH_BACKEND", "ddgs")
 
 def _search_serper(query: str, max_results: int) -> list[dict]:
     api_key = os.environ["SERPER_API_KEY"]
-    resp = requests.post(
-        "https://google.serper.dev/search",
-        headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-        json={"q": query, "num": min(max_results, 100)},
-        timeout=10,
-    )
-    resp.raise_for_status()
-    items = resp.json().get("organic", [])
-    return [
-        {
-            "url": item.get("link", ""),
-            "title": item.get("title", ""),
-            "snippet": item.get("snippet", ""),
-        }
-        for item in items
-    ][:max_results]
+    results = []
+    for page in range(1, SEARCH_PAGES + 1):
+        resp = requests.post(
+            "https://google.serper.dev/search",
+            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
+            json={"q": query, "num": max_results, "page": page},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("organic", [])
+        if not items:
+            break
+        for item in items:
+            results.append({
+                "url": item.get("link", ""),
+                "title": item.get("title", ""),
+                "snippet": item.get("snippet", ""),
+            })
+        time.sleep(0.2)
+    return results
 
 
 def _search_brave(query: str, max_results: int) -> list[dict]:

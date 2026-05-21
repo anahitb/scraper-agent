@@ -115,23 +115,23 @@ CONTENT_KEYWORDS = [
 MIN_CONTENT_KEYWORD_MATCHES = 2
 
 # Search queries constructed per provider.
-# filetype:pdf is Google-only — DuckDuckGo ignores it but queries still work.
+# Note: filetype:pdf removed — Serper returns 400 errors with that operator.
 SEARCH_QUERY_TEMPLATES = [
     # Tight — document title phrases
-    '"{provider}" "bulk service agreement" filetype:pdf',
-    '"{provider}" "communications network and service agreement" bulk filetype:pdf',
-    '"{provider}" "bulk cable television services agreement" filetype:pdf',
+    '"{provider}" "bulk service agreement" pdf',
+    '"{provider}" "communications network and service agreement" bulk pdf',
+    '"{provider}" "bulk cable television services agreement" pdf',
     # Broad — property type combos
-    '"{provider}" bulk internet agreement HOA filetype:pdf',
+    '"{provider}" bulk internet agreement HOA pdf',
     '"{provider}" bulk internet agreement "homeowners association" pdf',
     '"{provider}" bulk internet agreement "condo" OR "condominium" pdf',
     '"{provider}" MDU bulk service agreement pdf',
     '"{provider}" bulk internet "per unit" agreement pdf',
     # Public records / government portals often host these
-    '"{provider}" bulk agreement "number of units" filetype:pdf',
+    '"{provider}" bulk agreement "number of units" pdf',
     '"{provider}" "service commitment period" bulk internet pdf',
     '"{provider}" "door fee" bulk internet agreement pdf',
-    # Without filetype constraint — catches HTML-hosted or non-standard URLs
+    # Without pdf constraint — catches HTML-hosted or non-standard URLs
     '"{provider}" "bulk service fee" "per unit" internet agreement',
     '"{provider}" communities bulk internet agreement signed',
     # Simple unquoted — catches docs where provider name isn't in exact title

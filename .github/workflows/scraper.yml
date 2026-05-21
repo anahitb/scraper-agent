@@ -32,10 +32,13 @@ jobs:
           SEARCH_BACKEND: serper
         run: |
           mkdir -p output
-          # Convert comma-separated input to space-separated args
           PROVIDERS="${{ github.event.inputs.providers }}"
-          ARGS=$(echo "$PROVIDERS" | tr ',' '\n' | sed 's/^/"/;s/$/"/' | tr '\n' ' ')
-          eval python main.py $ARGS
+          if [ -n "$PROVIDERS" ]; then
+            ARGS=$(echo "$PROVIDERS" | tr ',' '\n' | sed 's/^/"/;s/$/"/' | tr '\n' ' ')
+            eval python main.py $ARGS
+          else
+            python main.py
+          fi
 
       - name: Upload CSV report
         uses: actions/upload-artifact@v4

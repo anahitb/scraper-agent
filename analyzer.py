@@ -12,23 +12,37 @@ SYSTEM_PROMPT = """You are an expert analyst specializing in bulk internet and t
 
 Your job is to:
 1. Confirm whether a document is a genuine bulk internet/telecommunications service agreement.
-2. Extract and summarize all key business terms.
+2. Extract key business terms.
 
 A genuine bulk agreement will have ALL of the following characteristics:
-- An ISP (e.g. Spectrum, Xfinity/Comcast, WOW!, Frontier, AT&T, Cox, Fibernow, CenturyLink, etc.) listed as Operator or Company
+- An ISP listed as Operator, Provider, or Company
 - A property entity (HOA, Homeowners Association, Condo Association, Apartment complex, property manager) listed as Owner or Customer
 - A specific number of units covered under the deal
-- A per-unit monthly Bulk Service Fee
+- A per-unit monthly Bulk Service Fee or Bulk Rate
 - A Service Commitment Period or term length (typically 5-10 years)
-- Bulk services covering internet and/or cable TV provided as an amenity
+- Bulk services covering internet and/or cable TV provided as an amenity to residents
 
-Common document titles you will see:
+Common document titles:
 - "Communications Network and Service Agreement (Bulk)"
 - "Bulk Cable Television Services Agreement"
-- "Xfinity Communities Service Agreement"
 - "[Provider] Bulk Service Agreement"
+- "[Provider] MDU Service Agreement"
 
-Key clauses to look for: Door Fee (one-time payment), marketing exclusivity, auto-renewal terms, termination payment, Advanced Community WiFi, capital investment by operator.
+Set is_bulk_agreement to FALSE if the document is any of the following:
+- Press release or news article
+- Marketing flyer, brochure, or FAQ
+- HOA newsletter or announcement
+- Pricing page or promotional material
+- Terms of service or privacy policy
+- A document missing both unit count AND pricing entirely
+
+Confidence rules:
+- "high": dollar amount, unit count, AND term length are all present
+- "medium": at least two of the above are present
+- "low": only one or none are present
+
+Provider name normalization: always return the clean short name (e.g. "Comcast" not "Comcast Cable Communications LLC", "Spectrum" not "Charter Communications").
+If the document is a genuine agreement but some fields are redacted or missing, still return it with null for those fields.
 """
 
 EXTRACTION_PROMPT = """Below is extracted text from a document. Analyze it and respond ONLY with valid JSON in the exact format below - no explanation, no markdown, just the JSON object.
@@ -37,22 +51,16 @@ EXTRACTION_PROMPT = """Below is extracted text from a document. Analyze it and r
   "is_bulk_agreement": true or false,
   "confidence": "high" | "medium" | "low",
   "reason": "one sentence explaining your determination",
-  "provider": "ISP name (e.g. Spectrum, Xfinity, WOW!, etc.) or null",
+  "provider": "clean ISP name or null",
   "property_name": "property or HOA name or null",
-  "property_address": "address if found or null",
+  "property_address": "full address if found or null",
   "key_takeaways": {{
     "number_of_units": "integer or null",
+    "contract_effective_date": "date the agreement takes effect e.g. January 1, 2023 or null",
     "service_commitment_period": "e.g. 60 months / 5 years or null",
-    "auto_renewal": "yes with term / no / unknown",
     "monthly_fee_per_unit": "e.g. $55.00/unit or null",
-    "total_monthly_billing": "e.g. $38,225/month or null",
     "door_fee_per_unit": "one-time fee e.g. $200/unit or null",
-    "internet_speed": "e.g. 500 Mbps x 20 Mbps or null",
-    "services_covered": ["internet", "cable tv", "phone", "wifi"],
-    "marketing_exclusivity": "exclusive / non-exclusive / partial / unknown",
-    "capital_investment_by_operator": "dollar amount or null",
-    "annual_rate_increase_cap": "e.g. 4% per year or null",
-    "notable_clauses": ["list notable items: termination payment formula, revenue share, fiber rebuild, door fee addendum, etc."]
+    "services_covered": ["internet", "cable tv", "phone", "wifi"]
   }}
 }}
 

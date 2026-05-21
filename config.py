@@ -14,6 +14,13 @@ PROVIDERS = [
     "ResTech Services",
     "Uprise Fiber",
     "Zentro",
+    "Frontier",
+    "Mediacom",
+    "Astound",
+    "Summit Broadband",
+    "WhiteSky",
+    "Secure Vision"
+    
 ]
 
 # Keywords that indicate a bulk internet agreement URL or document
@@ -42,6 +49,30 @@ URL_KEYWORDS = [
     "hoa",
     "homeowner",
     "condo-assoc",
+    "internet-agreement",
+    "internet_agreement",
+    "internet-pdf",
+    "internet_pdf",
+    "telecom-agreement",
+    "telecom_agreement",
+    "telecommunications-agreement",
+    "telecommunications_agreement",
+    "provider-agreement",
+    "provider_agreement",
+    "signed-agreement",
+    "signed_agreement",
+    "broadband-agreement",
+    "broadband_agreement",
+    "broadband-service",
+    "broadband_service",
+    "fiber-agreement",
+    "fiber_agreement",
+    "cable-agreement",
+    "cable_agreement",
+    "residential-agreement",
+    "residential_agreement",
+    "property-agreement",
+    "property_agreement",
 ]
 
 # Keywords searched inside PDF text to verify document type.

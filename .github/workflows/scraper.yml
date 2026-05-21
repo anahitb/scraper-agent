@@ -6,7 +6,7 @@ on:
       providers:
         description: 'Comma-separated provider names (e.g. Spectrum,Xfinity,WOW)'
         required: false
-        default: 'Comcast,Spectrum,Blue Stream,AT&T,Gigafy,GigaPointe,Gigstreem,GRUCom (Gator Net),Hawaii Dialogix Telecom LLC,IBT Connect,Juvilex Communications,Newark Fiber,ResTech Services,Uprise Fiber,Zentro'
+        default: 'Comcast,Spectrum,Blue Stream,AT&T,Gigafy,GigaPointe,Gigstreem,GRUCom (Gator Net),Hawaii Dialogix Telecom LLC,IBT Connect,Juvilex Communications,Newark Fiber,ResTech Services,Uprise Fiber,Zentro,Frontier,Mediacom,Astound,Summit Broadband,WhiteSky,Secure Vision'
 
 jobs:
   scrape:

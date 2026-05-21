@@ -50,21 +50,27 @@ CSV_COLUMNS = [
 ]
 
 
-def save_csv(results: list[dict]) -> None:
+def write_csv_row(result: dict) -> None:
+    """Append a single confirmed result to the CSV immediately."""
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
+    file_exists = os.path.isfile(CSV_FILE)
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([col for col, _ in CSV_COLUMNS])
-        for r in results:
-            a = r.get("analysis", {})
-            kt = a.get("key_takeaways", {})
-            writer.writerow([extractor(a, kt, r) for _, extractor in CSV_COLUMNS])
-    logger.info(f"CSV saved to {CSV_FILE}")
+        if not file_exists:
+            writer.writerow([col for col, _ in CSV_COLUMNS])
+        a = result.get("analysis", {})
+        kt = a.get("key_takeaways", {})
+        writer.writerow([extractor(a, kt, result) for _, extractor in CSV_COLUMNS])
 
 
 def run(providers: list[str]) -> list[dict]:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     all_results = []
+
+    # Write CSV header upfront so file exists even if no agreements found
+    if not os.path.isfile(CSV_FILE):
+        with open(CSV_FILE, "w", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow([col for col, _ in CSV_COLUMNS])
 
     for provider in providers:
         logger.info(f"=== Processing provider: {provider} ===")
@@ -94,21 +100,24 @@ def run(providers: list[str]) -> list[dict]:
             if r.get("analysis", {}).get("is_bulk_agreement") is True
         ]
         logger.info(f"{provider}: {len(confirmed)} confirmed bulk agreements")
+
+        # Write each confirmed agreement to CSV immediately
+        for r in confirmed:
+            entry = {k: v for k, v in r.items() if k not in ("full_text", "pdf_bytes")}
+            write_csv_row(entry)
+
         all_results.extend(confirmed)
+        logger.info(f"CSV updated after {provider} — {len(all_results)} total so far")
 
     return all_results
 
 
 def save_report(results: list[dict]) -> None:
-    report = [{k: v for k, v in r.items() if k not in ("full_text", "pdf_bytes")} for r in results]
-
-    save_csv(report)
-
     print("\n" + "=" * 60)
-    print(f"RESULTS: {len(report)} confirmed bulk agreements found")
+    print(f"RESULTS: {len(results)} confirmed bulk agreements found")
     print(f"CSV:     {CSV_FILE}")
     print("=" * 60)
-    for r in report:
+    for r in results:
         a = r.get("analysis", {})
         kt = a.get("key_takeaways", {})
         print(f"\nProvider     : {a.get('provider', r.get('provider'))}")

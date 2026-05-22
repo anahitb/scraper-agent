@@ -112,30 +112,15 @@ MIN_CONTENT_KEYWORD_MATCHES = 2
 # Search queries constructed per provider.
 # Note: filetype:pdf removed — Serper returns 400 errors with that operator.
 SEARCH_QUERY_TEMPLATES = [
-    # Tight — document title phrases
-    '"{provider}" "bulk service agreement" pdf',
-    '"{provider}" "communications network and service agreement" bulk pdf',
-    '"{provider}" "bulk cable television services agreement" pdf',
-    # Broad — property type combos
-    '"{provider}" bulk internet agreement HOA pdf',
-    '"{provider}" bulk internet agreement "homeowners association" pdf',
-    '"{provider}" bulk internet agreement "condo" OR "condominium" pdf',
-    '"{provider}" MDU bulk service agreement pdf',
-    '"{provider}" bulk internet "per unit" agreement pdf',
-    # Public records / government portals often host these
-    '"{provider}" bulk agreement "number of units" pdf',
-    '"{provider}" "service commitment period" bulk internet pdf',
-    '"{provider}" "door fee" bulk internet agreement pdf',
-    # Without pdf constraint — catches HTML-hosted or non-standard URLs
-    '"{provider}" "bulk service fee" "per unit" internet agreement',
-    '"{provider}" communities bulk internet agreement signed',
-    # Simple unquoted — catches docs where provider name isn't in exact title
-    '{provider} bulk internet agreement pdf',
-    '{provider} MDU bulk service agreement pdf',
+    '"{provider}" MDU agreement pdf',
+    '"{provider}" internet pdf',
+    '"{provider}" "internet agreement" pdf',
+    '"{provider}" "service agreement" pdf',
+    '"{provider}" "bulk internet" pdf',
 ]
 
 MAX_RESULTS_PER_QUERY = 10  # results per page
-SEARCH_PAGES = 5            # number of Google pages to fetch per query
+SEARCH_PAGES = 2            # number of Google pages to fetch per query
 PDF_DOWNLOAD_TIMEOUT = 30   # seconds
 MAX_PDF_PAGES_TO_SCAN = 20  # scan more pages — some agreements bury pricing deeper
 

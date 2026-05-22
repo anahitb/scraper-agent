@@ -1,3 +1,4 @@
+import csv
 import io
 import os
 import re
@@ -7,6 +8,9 @@ import pdfplumber
 from config import PDF_DOWNLOAD_TIMEOUT, MAX_PDF_PAGES_TO_SCAN, CONTENT_KEYWORDS, MIN_CONTENT_KEYWORD_MATCHES, OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
+
+UNREADABLE_DIR = os.path.join(OUTPUT_DIR, "unreadable")
+UNREADABLE_CSV = os.path.join(OUTPUT_DIR, "unreadable_pdfs.csv")
 
 HEADERS = {
     "User-Agent": (
@@ -44,7 +48,7 @@ def fetch_bytes(url: str) -> bytes | None:
 
 
 def extract_text(pdf_bytes: bytes) -> str:
-    """Extract text from first N pages of a PDF."""
+    """Extract text from first N pages of a PDF using pdfplumber."""
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             pages = pdf.pages[:MAX_PDF_PAGES_TO_SCAN]
@@ -52,6 +56,43 @@ def extract_text(pdf_bytes: bytes) -> str:
     except Exception as e:
         logger.warning(f"PDF text extraction failed: {e}")
         return ""
+
+
+def extract_text_ocr(pdf_bytes: bytes) -> str:
+    """OCR fallback: convert PDF pages to images and run Tesseract."""
+    try:
+        import pytesseract
+        from pdf2image import convert_from_bytes
+        images = convert_from_bytes(pdf_bytes, last_page=MAX_PDF_PAGES_TO_SCAN, dpi=200)
+        parts = []
+        for img in images:
+            parts.append(pytesseract.image_to_string(img))
+        return "\n".join(parts)
+    except Exception as e:
+        logger.warning(f"OCR extraction failed: {e}")
+        return ""
+
+
+def save_unreadable(pdf_bytes: bytes, provider: str, url: str) -> None:
+    """Save an unreadable PDF and log it to unreadable_pdfs.csv for manual review."""
+    os.makedirs(UNREADABLE_DIR, exist_ok=True)
+    filename = _safe_filename(url, provider)
+    path = os.path.join(UNREADABLE_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(pdf_bytes)
+
+    file_exists = os.path.isfile(UNREADABLE_CSV)
+    with open(UNREADABLE_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Provider", "URL", "Saved PDF", "Note"])
+        writer.writerow([
+            provider,
+            url,
+            path,
+            "possible bulk agreement — text extraction failed, manual review needed",
+        ])
+    logger.info(f"Unreadable PDF saved for manual review: {path}")
 
 
 def content_keyword_score(text: str) -> tuple[int, list[str]]:
@@ -87,9 +128,16 @@ def process_url(result: dict) -> dict:
         return result
 
     text = extract_text(pdf_bytes)
+
     if not text.strip():
-        result["status"] = "no_text_extracted"
-        result["pdf_bytes"] = pdf_bytes  # might still be useful
+        logger.info(f"pdfplumber returned no text, trying OCR: {url}")
+        text = extract_text_ocr(pdf_bytes)
+
+    if not text.strip():
+        # Both methods failed — preserve the PDF for manual review
+        logger.warning(f"Text extraction fully failed (pdfplumber + OCR): {url}")
+        save_unreadable(pdf_bytes, provider, url)
+        result["status"] = "unreadable"
         return result
 
     score, matched_kws = content_keyword_score(text)

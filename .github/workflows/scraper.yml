@@ -22,6 +22,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install system dependencies
+        run: sudo apt-get install -y tesseract-ocr poppler-utils
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
@@ -54,6 +57,22 @@ jobs:
         with:
           name: bulk-agreements-pdfs
           path: output/*.pdf
+          if-no-files-found: warn
+
+      - name: Upload unreadable PDFs for manual review
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unreadable-pdfs
+          path: output/unreadable/
+          if-no-files-found: warn
+
+      - name: Upload unreadable PDF log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unreadable-pdfs-log
+          path: output/unreadable_pdfs.csv
           if-no-files-found: warn
 
       - name: Upload full output folder

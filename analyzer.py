@@ -4,9 +4,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Set LLM_BACKEND=anthropic to use Claude (paid).
-# Default is groq (free — sign up at console.groq.com, no credit card needed).
-LLM_BACKEND = os.getenv("LLM_BACKEND", "groq")
+# Set LLM_BACKEND=anthropic to use Claude instead.
+# Default is openai (gpt-4o-mini).
+LLM_BACKEND = os.getenv("LLM_BACKEND", "openai")
 
 SYSTEM_PROMPT = """You are an expert analyst specializing in bulk internet and telecommunications service agreements between internet service providers (ISPs) and property owners/managers (MDU — multi-dwelling units, apartment complexes, HOAs, condo associations, commercial buildings, etc.).
 
@@ -70,11 +70,11 @@ Document text (first {char_count} characters):
 ---"""
 
 
-def _call_groq(prompt: str) -> str:
-    from groq import Groq
-    client = Groq(api_key=os.environ["GROQ_API_KEY"])
+def _call_openai(prompt: str) -> str:
+    from openai import OpenAI
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
@@ -119,7 +119,7 @@ def analyze(result: dict) -> dict:
         if LLM_BACKEND == "anthropic":
             raw = _call_anthropic(prompt)
         else:
-            raw = _call_groq(prompt)
+            raw = _call_openai(prompt)
 
         analysis = _parse_json(raw)
         result["analysis"] = analysis

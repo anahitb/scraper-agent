@@ -121,7 +121,7 @@ SEARCH_QUERY_TEMPLATES = [
 
 MAX_RESULTS_PER_QUERY = 10  # results per page
 SEARCH_PAGES = 2            # number of Google pages to fetch per query
-PDF_DOWNLOAD_TIMEOUT = 30   # seconds
+PDF_DOWNLOAD_TIMEOUT = 10   # seconds
 MAX_PDF_PAGES_TO_SCAN = 20  # scan more pages — some agreements bury pricing deeper
 
 OUTPUT_DIR = "output"
